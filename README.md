@@ -1,3 +1,5 @@
+![Screenshot from 2025-05-22 18-46-23](https://github.com/user-attachments/assets/39e2bd88-1236-46ab-9908-2cba7ec60263)
+
 ## Gemini Cloud Speech-to-text (Home Assistant Integration)
 This is a competitor of Google Cloud Speech-to-text. Despite it does not support non-English transcription, the best part is it is free. Get your api_key at [Google AI Studio](https://aistudio.google.com/app/apikey) now!
 
