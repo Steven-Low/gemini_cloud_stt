@@ -1,7 +1,7 @@
 """Config flow for Gemini Cloud STT integration."""
 
 from __future__ import annotations
- 
+
 from typing import Any
 
 import logging
@@ -10,12 +10,13 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_MODEL, CONF_API_KEY
 from homeassistant.core import callback, HomeAssistant
- 
-from google import genai
+
+import openai
 from .const import (
     DEFAULT_MODEL,
     DOMAIN,
     SUPPORTED_MODELS,
+    GEMINI_BASE_URL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,10 +34,16 @@ OPTIONS_SCHEMA = vol.Schema(
 )
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
-    """Validate the user input for gemini client."""
-    def setup_gemini_client():
-        client = genai.Client(api_key=data[CONF_API_KEY])
-    await hass.async_add_executor_job(setup_gemini_client)
+    """Validate the user input allows us to connect.
+    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
+    """
+    client = openai.AsyncOpenAI(api_key=data[CONF_API_KEY], base_url=GEMINI_BASE_URL)
+    try:
+        await client.models.list()
+    except Exception as err:
+        _LOGGER.exception("Failed to validate API key with Gemini backend.")
+        raise ValueError("Invalid API key or Gemini API error") from err
+
 
 class GeminiCloudConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Gemini Cloud STT integration."""
@@ -56,7 +63,7 @@ class GeminiCloudConfigFlow(ConfigFlow, domain=DOMAIN):
 
         errors: dict[str, str] = {}
 
-        try: 
+        try:
             await validate_input(self.hass, user_input)
         except Exception as err:
             errors["base"] = "unknown"
@@ -70,22 +77,22 @@ class GeminiCloudConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
- 
+
     @staticmethod
     @callback
     def async_get_options_flow(
         config_entry: ConfigEntry,
     ) -> OptionsFlow:
         """Create the options flow."""
-        return GeminiCloudOptionsFlowHandler(config_entry)
-    
+        return GeminiCloudOptionsFlowHandler()
+
 
 class GeminiCloudOptionsFlowHandler(OptionsFlow):
     """Handle a options flow for Google Cloud STT integration."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize Google Cloud STT options flow."""
-        self.config_entry = config_entry
+    @property
+    def config_entry(self):
+        return self.hass.config_entries.async_get_entry(self.handler)
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -93,5 +100,13 @@ class GeminiCloudOptionsFlowHandler(OptionsFlow):
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="Gemini Cloud STT", data=user_input)
-    
-        return self.async_show_form(step_id="init", data_schema=OPTIONS_SCHEMA)
+
+        # Use current option or fallback to default
+        current_model = self.config_entry.options.get(CONF_MODEL, DEFAULT_MODEL)
+
+        # Replace OPTION_SCHEMA with dynamic one
+        dynamic_schema = vol.Schema({
+            vol.Optional(CONF_MODEL, default=current_model): vol.In(SUPPORTED_MODELS),
+        })
+
+        return self.async_show_form(step_id="init", data_schema=dynamic_schema)
