@@ -39,12 +39,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Validate the user input allows us to connect.
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    client = openai.AsyncOpenAI(api_key=data[CONF_API_KEY], base_url=GEMINI_BASE_URL)
-    try:
-        await client.models.list()
-    except Exception as err:
-        _LOGGER.exception("Failed to validate API key with Gemini backend.")
-        raise ValueError("Invalid API key or Gemini API error") from err
+    def sync_create_and_validate():
+        client = openai.OpenAI(api_key=data[CONF_API_KEY], base_url=GEMINI_BASE_URL)
+        client.models.list()
+    await hass.async_add_executor_job(sync_create_and_validate)
 
 
 class GeminiCloudConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -69,7 +67,7 @@ class GeminiCloudConfigFlow(ConfigFlow, domain=DOMAIN):
             await validate_input(self.hass, user_input)
         except Exception as err:
             errors["base"] = "unknown"
-            _LOGGER.info("Error validating gemini api key: ", err)
+            _LOGGER.error("Error validating gemini api key")
         else:
             return self.async_create_entry(
                 title="Gemini Cloud STT",
