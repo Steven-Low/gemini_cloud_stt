@@ -21,153 +21,17 @@ from homeassistant.components.stt import (
     SpeechResultState,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_MODEL, CONF_API_KEY
+from homeassistant.const import CONF_MODEL, CONF_API_KEY, CONF_LANGUAGE, CONF_VALUE_TEMPLATE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
- 
 
-from .const import  DEFAULT_MODEL, DOMAIN, SAMPLE_CHANNELS, SAMPLE_RATE, SAMPLE_WIDTH
+
+from .const import CONF_PROMPT, DEFAULT_MODEL, SAMPLE_CHANNELS, SAMPLE_RATE, SAMPLE_WIDTH, SUPPORTED_LANGUAGES
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-SUPPORTED_LANGUAGES = [
-    "af-ZA",
-    "sq-AL",
-    "am-ET",
-    "ar-DZ",
-    "ar-BH",
-    "ar-EG",
-    "ar-IQ",
-    "ar-IL",
-    "ar-JO",
-    "ar-KW",
-    "ar-LB",
-    "ar-MA",
-    "ar-OM",
-    "ar-QA",
-    "ar-SA",
-    "ar-PS",
-    "ar-TN",
-    "ar-AE",
-    "ar-YE",
-    "hy-AM",
-    "az-AZ",
-    "eu-ES",
-    "bn-BD",
-    "bn-IN",
-    "bs-BA",
-    "bg-BG",
-    "my-MM",
-    "ca-ES",
-    "zh-CN",
-    "zh-TW",
-    "hr-HR",
-    "cs-CZ",
-    "da-DK",
-    "nl-BE",
-    "nl-NL",
-    "en-AU",
-    "en-CA",
-    "en-GH",
-    "en-HK",
-    "en-IN",
-    "en-IE",
-    "en-KE",
-    "en-NZ",
-    "en-NG",
-    "en-PK",
-    "en-PH",
-    "en-SG",
-    "en-ZA",
-    "en-TZ",
-    "en-GB",
-    "en-US",
-    "et-EE",
-    "fil-PH",
-    "fi-FI",
-    "fr-BE",
-    "fr-CA",
-    "fr-FR",
-    "fr-CH",
-    "gl-ES",
-    "ka-GE",
-    "de-AT",
-    "de-DE",
-    "de-CH",
-    "el-GR",
-    "gu-IN",
-    "iw-IL",
-    "hi-IN",
-    "hu-HU",
-    "is-IS",
-    "id-ID",
-    "it-IT",
-    "it-CH",
-    "ja-JP",
-    "jv-ID",
-    "kn-IN",
-    "kk-KZ",
-    "km-KH",
-    "ko-KR",
-    "lo-LA",
-    "lv-LV",
-    "lt-LT",
-    "mk-MK",
-    "ms-MY",
-    "ml-IN",
-    "mr-IN",
-    "mn-MN",
-    "ne-NP",
-    "no-NO",
-    "fa-IR",
-    "pl-PL",
-    "pt-BR",
-    "pt-PT",
-    "ro-RO",
-    "ru-RU",
-    "sr-RS",
-    "si-LK",
-    "sk-SK",
-    "sl-SI",
-    "es-AR",
-    "es-BO",
-    "es-CL",
-    "es-CO",
-    "es-CR",
-    "es-DO",
-    "es-EC",
-    "es-SV",
-    "es-GT",
-    "es-HN",
-    "es-MX",
-    "es-NI",
-    "es-PA",
-    "es-PY",
-    "es-PE",
-    "es-PR",
-    "es-ES",
-    "es-US",
-    "es-UY",
-    "es-VE",
-    "su-ID",
-    "sw-KE",
-    "sw-TZ",
-    "sv-SE",
-    "ta-IN",
-    "ta-MY",
-    "ta-SG",
-    "ta-LK",
-    "te-IN",
-    "th-TH",
-    "tr-TR",
-    "uk-UA",
-    "ur-IN",
-    "ur-PK",
-    "uz-UZ",
-    "vi-VN",
-    "zu-ZA",
-]
+
 
 
 async def async_setup_entry(
@@ -180,7 +44,11 @@ async def async_setup_entry(
     async_add_entities(
         [
             GeminiCloudSTTProvider(
-                hass, config_entry.data[CONF_API_KEY], config_entry.options.get(CONF_MODEL, DEFAULT_MODEL)
+                hass,
+                config_entry.data[CONF_API_KEY],
+                config_entry.options.get(CONF_MODEL, DEFAULT_MODEL),
+                config_entry.options.get(CONF_LANGUAGE, "auto"),
+                config_entry.options.get(CONF_VALUE_TEMPLATE, CONF_PROMPT)
             ),
         ]
     )
@@ -192,12 +60,14 @@ class GeminiCloudSTTProvider(stt.SpeechToTextEntity):
     _attr_name = "Gemini Cloud"
     _attr_unique_id = "gemini-cloud-speech-to-text"
 
-    def __init__(self, hass, api_key, model) -> None:
+    def __init__(self, hass, api_key, model, language, prompt) -> None:
         """Init Gemini Cloud STT service."""
         self.hass = hass
 
         self._model = model
         self._api_key = api_key
+        self._language = language
+        self._prompt = prompt
         self._client = None
 
     @property
@@ -258,13 +128,14 @@ class GeminiCloudSTTProvider(stt.SpeechToTextEntity):
             audio_data += chunk
 
         wav_data = await self.convert_raw_to_wav(audio_data)
- 
+
 
         def job():
+            _LOGGER.info("PROMPT: " + self._prompt if self._language == "auto" else f"{CONF_PROMPT} to {self._language}")
             return self._client.models.generate_content(
                 model=self._model,
                 contents=[
-                    'Transcribe this audio clip',
+                    self._prompt if self._language == "auto" else f"{CONF_PROMPT} to {self._language}",
                     types.Part.from_bytes(
                         data=wav_data,
                         mime_type='audio/wav',

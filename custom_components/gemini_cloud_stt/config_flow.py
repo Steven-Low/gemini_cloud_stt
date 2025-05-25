@@ -8,7 +8,7 @@ import logging
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
-from homeassistant.const import CONF_MODEL, CONF_API_KEY
+from homeassistant.const import CONF_MODEL, CONF_API_KEY, CONF_LANGUAGE, CONF_VALUE_TEMPLATE
 from homeassistant.core import callback, HomeAssistant
 
 import openai
@@ -17,6 +17,8 @@ from .const import (
     DOMAIN,
     SUPPORTED_MODELS,
     GEMINI_BASE_URL,
+    SUPPORTED_LANGUAGES,
+    CONF_PROMPT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -101,12 +103,18 @@ class GeminiCloudOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="Gemini Cloud STT", data=user_input)
 
-        # Use current option or fallback to default
         current_model = self.config_entry.options.get(CONF_MODEL, DEFAULT_MODEL)
+        current_language = self.config_entry.options.get(CONF_LANGUAGE, "auto")
+        current_prompt = CONF_PROMPT
 
-        # Replace OPTION_SCHEMA with dynamic one
         dynamic_schema = vol.Schema({
             vol.Optional(CONF_MODEL, default=current_model): vol.In(SUPPORTED_MODELS),
+            vol.Optional(CONF_LANGUAGE, default=current_language): vol.In(SUPPORTED_LANGUAGES + ['auto']),
+            vol.Optional(
+                CONF_VALUE_TEMPLATE,
+                description={"suggested_value": CONF_PROMPT},
+                default=current_prompt
+            ): str,
         })
 
         return self.async_show_form(step_id="init", data_schema=dynamic_schema)

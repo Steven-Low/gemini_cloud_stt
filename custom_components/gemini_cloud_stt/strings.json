@@ -23,7 +23,9 @@
           "title": "Gemini Cloud STT Options",
           "description": "Select your preferred speech-to-text model.",
           "data": {
-            "model": "Model"
+            "model": "Model",
+            "language": "Language",
+            "value_template": "Prompt"
           }
         }
       }
