@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import AsyncIterable
 import io
 import wave
-from google import genai
+import google.genai as genai
 from google.genai import types
 
 from homeassistant.components import stt
