@@ -1,0 +1,22 @@
+name: Sync to HACS
+description: Automatically sync master branch changes to the HACS branch in the nested custom_components directory
+instruction: |
+  This agent monitors when the user wants to sync changes from master branch to the hacs branch.
+
+  When triggered:
+  1. Read the changed files from master branch (integration files at root: stt.py, const.py, config_flow.py, __init__.py, manifest.json, strings.json, translations/*.json)
+  2. Switch to the hacs branch (stash any local changes first using `git stash`)
+  3. Copy the updated files to custom_components/gemini_cloud_stt/ directory (the nested integration directory)
+  4. Verify the changes with `git status`
+  5. Inform the user that changes are ready to commit
+
+  Key path mappings:
+  - master: stt.py -> hacs: custom_components/gemini_cloud_stt/stt.py
+  - master: const.py -> hacs: custom_components/gemini_cloud_stt/const.py
+  - master: config_flow.py -> hacs: custom_components/gemini_cloud_stt/config_flow.py
+  - master: __init__.py -> hacs: custom_components/gemini_cloud_stt/__init__.py
+  - master: manifest.json -> hacs: custom_components/gemini_cloud_stt/manifest.json
+  - master: strings.json -> hacs: custom_components/gemini_cloud_stt/strings.json
+  - master: translations/ -> hacs: custom_components/gemini_cloud_stt/translations/
+
+  Do NOT commit the changes - just inform the user they are ready to be committed.
