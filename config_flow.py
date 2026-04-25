@@ -32,6 +32,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 OPTIONS_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_MODEL, default=DEFAULT_MODEL): vol.In(SUPPORTED_MODELS),
+        vol.Optional(CONF_LANGUAGE, default="auto"): str,
+        vol.Optional(CONF_VALUE_TEMPLATE, default=""): str,
     }
 )
 
@@ -99,18 +101,21 @@ class GeminiCloudOptionsFlowHandler(OptionsFlow):
     ) -> ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
-            return self.async_create_entry(title="Gemini Cloud STT", data=user_input)
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                options={**self.config_entry.options, **user_input},
+            )
+            return self.async_create_entry(title="Gemini Cloud STT", data={})
 
         current_model = self.config_entry.options.get(CONF_MODEL, DEFAULT_MODEL)
         current_language = self.config_entry.options.get(CONF_LANGUAGE, "auto")
-        current_prompt = CONF_PROMPT
+        current_prompt = self.config_entry.options.get(CONF_VALUE_TEMPLATE, CONF_PROMPT)
 
         dynamic_schema = vol.Schema({
             vol.Optional(CONF_MODEL, default=current_model): vol.In(SUPPORTED_MODELS),
             vol.Optional(CONF_LANGUAGE, default=current_language): vol.In(SUPPORTED_LANGUAGES + ['auto']),
             vol.Optional(
                 CONF_VALUE_TEMPLATE,
-                description={"suggested_value": CONF_PROMPT},
                 default=current_prompt
             ): str,
         })
